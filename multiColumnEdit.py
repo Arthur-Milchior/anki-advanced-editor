@@ -3,6 +3,7 @@ import os
 
 from anki.hooks import runHook
 from anki.lang import _
+from anki.latex import mungeQA
 from aqt import editor
 from aqt.editor import *
 from aqt.editor import _html
@@ -111,6 +112,7 @@ def loadNote(self, focusTo=None):
                          sticky))
         self.widget.show()
         self.updateTags()
+        print(f"data is {data}")
 
         def oncallback(arg):
             if not self.note:

@@ -16,7 +16,7 @@ function onFocusTex(elem) {
     var field = originalFields[ord];
     if (field !== null) {
         elem.innerHTML = field;
-        originalFields = null;
+        originalFields[ord] = null;
     }
     if (previousCurrentField === elem) {
         // anki window refocused; current element unchanged
