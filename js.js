@@ -1,3 +1,51 @@
+var originalFields = [];
+
+function onFocusTex(elem) {
+    /*
+       Called when focus is set to the field `elem`.
+
+       If the field is not changed, nothing occurs.
+       Otherwise, set currentField value, warns python of it.
+       Change buttons.
+       If the change is note made by mouse, then move caret to end of field, and move the window to show the field.
+
+     */
+    var previousCurrentField = currentField;
+    currentField = elem;
+    var ord = currentFieldOrdinal()
+    var field = originalFields[ord];
+    if (field !== null) {
+        elem.innerHTML = field;
+        originalFields = null;
+    }
+    if (previousCurrentField === elem) {
+        // anki window refocused; current element unchanged
+        return;
+    }
+    pycmd("focus:" + ord);
+    enableButtons();
+    // don't adjust cursor on mouse clicks
+    if (mouseDown) {
+        return;
+    }
+    // do this twice so that there's no flicker on newer versions
+    caretToEnd();
+    // scroll if bottom of element off the screen
+    function pos(obj) {
+        var cur = 0;
+        do {
+            cur += obj.offsetTop;
+        } while (obj = obj.offsetParent);
+        return cur;
+    }
+
+    var y = pos(elem);
+    if ((window.pageYOffset + window.innerHeight) < (y + elem.offsetHeight) ||
+        window.pageYOffset > y) {
+        window.scroll(0, y + elem.offsetHeight - window.innerHeight);
+    }
+}
+
 function changeSize(fieldNumber){
     saveNow(true);
     pycmd("toggleLineAlone:"+fieldNumber);
@@ -9,7 +57,7 @@ function toggleFroze(fieldNumber){
 }
 
 function createDiv(ord,  fieldContent, nbCol){
-    return "<td colspan={2}><div id='f{0}' onkeydown='onKey();' oninput='onInput();' onmouseup='onKey();'  onfocus='onFocus(this);' onblur='onBlur();' class='field clearfix' ondragover='onDragOver(this);' onpaste='onPaste(this);' oncopy='onCutOrCopy(this);' oncut='onCutOrCopy(this);' contentEditable=true class=field>{1}</div></td>".format(ord, fieldContent, nbCol);
+    return "<td colspan={2}><div id='f{0}' onkeydown='onKey();' oninput='onInput();' onmouseup='onKey();'  onfocus='onFocusTex(this);' onblur='onBlur();' class='field clearfix' ondragover='onDragOver(this);' onpaste='onPaste(this);' oncopy='onCutOrCopy(this);' oncut='onCutOrCopy(this);' contentEditable=true class=field>{1}</div></td>".format(ord, fieldContent, nbCol);
 }
 
 function createNameTd(ord, fieldName, nbColThisField, nbColTotal, sticky, imgFrozen, imgUnfrozen){
@@ -32,21 +80,27 @@ function setFieldsMC(fields, nbCol, imgFrozen, imgUnfrozen) {
       fields -- a list of fields, as (name of the field, current value, whether it has its own line)
       nbCol -- number of colum*/
     var txt = "";
+    originalFields = [];
     var width = 100/nbCol;
     var partialNames = "";
     var partialFields = "";
     var lengthLine = 0;
     for (var i = 0; i < fields.length; i++) {
         var fieldName = fields[i][0];
+        var alone = fields[i][3];
+        var sticky = fields[i][4];
         var fieldContent = fields[i][1];
-        var alone = fields[i][2];
-        var sticky = fields[i][3];
         if (!fieldContent) {
             fieldContent = "<br>";
         }
+        originalFields[i] = fieldContent;
+        var fieldContentTex = fields[i][2];
+        if (!fieldContentTex) {
+            fieldContentTex = "<br>";
+        }
         //console.log("fieldName: "+fieldName+", fieldContent: "+fieldContent+", alone: "+alone);
         nbColThisField = (alone)?nbCol:1;
-        fieldContentHtml = createDiv(i, fieldContent, nbColThisField);
+        fieldContentHtml = createDiv(i, fieldContentTex, nbColThisField);
         fieldNameHtml = createNameTd(i, fieldName, nbColThisField, nbCol, sticky, imgFrozen, imgUnfrozen)
         if (alone){
             nameTd = fieldNameHtml

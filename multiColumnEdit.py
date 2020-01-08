@@ -99,11 +99,16 @@ def loadNote(self, focusTo=None):
         # used locally, and whether it is on its own line)
         data = []
         for ord, (fld, val) in enumerate(self.note.items()):
-            val = self.mw.col.media.escapeImages(val)
+            fldContent = self.mw.col.media.escapeImages(val)
+            fldContentTexProcessed = self.mw.col.media.escapeImages(mungeQA(val, None, None, self.note.model(), None, self.note.col))
             field = self.model["flds"][ord]
             lineAlone = field.get("Line alone", False)
             sticky = field.get("sticky", False)
-            data.append((fld, val, lineAlone, sticky))
+            data.append((fld,
+                         fldContent,
+                         fldContentTexProcessed,
+                         lineAlone,
+                         sticky))
         self.widget.show()
         self.updateTags()
 
