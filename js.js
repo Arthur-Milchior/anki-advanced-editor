@@ -72,6 +72,31 @@ function createNameTd(ord, fieldName, nbColThisField, nbColTotal, sticky, imgFro
     return txt;
 }
 
+function currentFieldOrdinalAux() {
+    if (currentField) {
+        return currentField.id.substring(1);
+    } else {
+        return null;
+    }
+}
+
+function setField(ord, fieldValue, fieldValueTexProcessed) {
+    var currentOrd = currentFieldOrdinalAux();
+    if (currentOrd == ord) {
+        return;
+    }
+    if (!fieldValue) {
+        fieldValue = "<br>";
+    }
+    originalFields[ord] = fieldValue;
+    if (!fieldValueTexProcessed) {
+        fieldValueTexProcessed = "<br>";
+    }
+    field = $("#f"+ord);
+    field.html(fieldValueTexProcessed);
+
+}
+
 function setFieldsMC(fields, nbCol, imgFrozen, imgUnfrozen) {
     //console.log("Set fields with "+nbCol+" columns")
     /*Replace #fields by the HTML to show the list of fields to edit.

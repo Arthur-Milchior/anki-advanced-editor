@@ -217,3 +217,16 @@ def setupWeb(self):
                          js=["jquery.js", "editor.js"],
                          head=js+css)
 Editor.setupWeb = setupWeb
+oldBridgeCmd = Editor.onBridgeCmd
+
+def onBridgeCmd(self, cmd):
+    r = oldBridgeCmd(self, cmd)
+    if cmd.startswith("blur"):
+        (type, ord, txt) = cmd.split(":", 2)
+        val = self.note.fields[int(ord)]
+        fldContent = self.mw.col.media.escapeImages(val)
+        fldContentTexProcessed = self.mw.col.media.escapeImages(mungeQA(val, None, None, self.note.model(), None, self.note.col))
+        self.web.eval(f"setField({ord}, {json.dumps(fldContent)}, {json.dumps(fldContentTexProcessed)});")
+    return r
+
+Editor.onBridgeCmd = onBridgeCmd
