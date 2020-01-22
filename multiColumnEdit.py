@@ -3,12 +3,27 @@ import os
 
 from anki.hooks import runHook
 from anki.lang import _
-from anki.latex import mungeQA
+import anki.latex
 from aqt import editor
 from aqt.editor import *
 from aqt.editor import _html
 from aqt.qt import *
 from aqt.utils import shortcut
+from typing import Dict
+
+#Imitating anki 2.1.19 munge QA using 2.1.20 function
+if hasattr(anki.latex, 'mungeQA'):
+    mungeQA = anki.latex.mungeQA
+else:
+    def mungeQA(
+            html,
+            type,
+            fields,
+            model,
+            data,
+            col,
+    ) -> str:
+        return anki.latex.render_latex(html, model, col)
 
 old_init = Editor.__init__
 
