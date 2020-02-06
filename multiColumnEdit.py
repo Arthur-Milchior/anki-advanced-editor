@@ -227,7 +227,8 @@ def setupWeb(self):
             topbuts,
             _("Show Duplicates"))
         self.web.stdHtml(html,
-                         css=["editor.css"], # only difference, css and js file
+                         css=["editor.css"],
+                         # only difference, css and js file
                          js=["jquery.js", "editor.js"],
                          head=js+css)
 Editor.setupWeb = setupWeb
