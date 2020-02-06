@@ -91,8 +91,8 @@ function setField(ord, fieldValue, fieldValueTexProcessed) {
     if (!fieldValueTexProcessed) {
         fieldValueTexProcessed = "<br>";
     }
-    field = $("#f"+ord);
-    field.html(fieldValueTexProcessed);
+    $field = $("#f"+ord);
+    $field.html(fieldValueTexProcessed);
 
 }
 
@@ -146,3 +146,56 @@ function setFieldsMC(fields, nbCol, imgFrozen, imgUnfrozen) {
     $("#fields").html("<table cellpadding=0 width=100% style='table-layout: fixed;'>" + txt + "</table>");
     maybeDisableButtons();
 }
+
+// Resize
+function $cleanResize($field){
+    $divUi = $field.find("div[class^=ui-]");
+    $divUi.replaceWith(
+        function() {
+            return $(this).contents();
+        }
+    );
+    imgs = $field.find("img.ui-resizable");
+    imgs.removeClass();
+    imgs.css("position", "");
+}
+
+function cleanResize(field){
+    $cleanResize($(field));
+}
+
+
+function $resizeImage($img){
+    if ($img.resizable("instance") == undefined ) {
+        $img.resizable();
+    } else {
+        console.log("Trying to apply resizable to image already resizable.");
+    }
+}
+
+
+function resizeImage(idx, img){
+    $resizeImage($(img));
+}
+function dblClickImage(){
+    $img = $(this);
+    $img.css("width", "");
+    $img.css("height", "");
+    $parents = $img.parents("div[class^=ui-]");
+    $parents.css("width", "");
+    $parents.css("height", "");
+}
+function $resizeImagesInField($field){
+    $imgs = $field.find("img");
+    $imgs.dblclick(dblClickImage);
+    $imgs.each(resizeImage);
+    $imgs.css("display", "");
+    $divUi = $field.find("div[class^=ui-]");
+    $divUi.attr("contentEditable", "false");
+    $divUi.css("display", "inline-block");
+}
+
+function resizeImagesInField(idx, field){
+    return $resizeImagesInField($(field));
+}
+
