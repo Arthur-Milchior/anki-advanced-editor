@@ -9,7 +9,6 @@ from aqt.editor import *
 from aqt.editor import _html
 from aqt.qt import *
 from aqt.utils import shortcut
-from typing import Dict
 
 #Imitating anki 2.1.19 munge QA using 2.1.20 function
 if hasattr(anki.latex, 'mungeQA'):
