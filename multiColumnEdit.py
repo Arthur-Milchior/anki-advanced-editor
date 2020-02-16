@@ -10,7 +10,7 @@ from aqt.editor import _html
 from aqt.qt import *
 from aqt.utils import shortcut
 
-#Imitating anki 2.1.19 munge QA using 2.1.20 function
+# Imitating anki 2.1.19 munge QA using 2.1.20 function
 if hasattr(anki.latex, 'mungeQA'):
     mungeQA = anki.latex.mungeQA
 else:
@@ -26,48 +26,64 @@ else:
 
 old_init = Editor.__init__
 
+
 def __init__(self, *args, **kwargs):
     self.modelChanged = False
     self.model = None
     old_init(self, *args, **kwargs)
+
+
 Editor.__init__ = __init__
 
 old_setupTags = Editor.setupTags
+
+
 def setupTags(self, *args, **kwargs):
-        g = QGroupBox(self.widget)
-        g.setFlat(True)
-        tabLine = QHBoxLayout()
-        tabLine.setSpacing(12)
-        tabLine.setContentsMargins(6,6,6,6)
+    g = QGroupBox(self.widget)
+    g.setFlat(True)
+    tabLine = QHBoxLayout()
+    tabLine.setSpacing(12)
+    tabLine.setContentsMargins(6, 6, 6, 6)
 
-        self.setupActualTags(tabLine)
-        self.setupNumberColum(tabLine)
+    self.setupActualTags(tabLine)
+    self.setupNumberColum(tabLine)
 
-        self.outerLayout.addWidget(g)
-        g.setLayout(tabLine)
+    self.outerLayout.addWidget(g)
+    g.setLayout(tabLine)
+
+
 Editor.setupTags = setupTags
 
+
 def setupActualTags(self, tabLine):
-        import aqt.tagedit
-        # tags
-        tagLabel = QLabel(_("Tags"))
-        tabLine.addWidget(tagLabel)
-        self.tags = aqt.tagedit.TagEdit(self.widget)
-        self.tags.lostFocus.connect(self.saveTags)
-        self.tags.setToolTip(shortcut(_("Jump to tags with Ctrl+Shift+T")))
-        tabLine.addWidget(self.tags)
+    import aqt.tagedit
+    # tags
+    tagLabel = QLabel(_("Tags"))
+    tabLine.addWidget(tagLabel)
+    self.tags = aqt.tagedit.TagEdit(self.widget)
+    self.tags.lostFocus.connect(self.saveTags)
+    self.tags.setToolTip(shortcut(_("Jump to tags with Ctrl+Shift+T")))
+    tabLine.addWidget(self.tags)
+
+
 Editor.setupActualTags = setupActualTags
 
+
 def setupNumberColum(self, tabLine):
-        label = QLabel("Columns:", self.widget)
-        tabLine.addWidget(label)
-        self.ccSpin = QSpinBox(self.widget)
-        tabLine.addWidget(self.ccSpin)
-        self.ccSpin.setMinimum(1)
-        self.ccSpin.valueChanged.connect(lambda value: self.onColumnCountChanged(value))
+    label = QLabel("Columns:", self.widget)
+    tabLine.addWidget(label)
+    self.ccSpin = QSpinBox(self.widget)
+    tabLine.addWidget(self.ccSpin)
+    self.ccSpin.setMinimum(1)
+    self.ccSpin.valueChanged.connect(
+        lambda value: self.onColumnCountChanged(value))
+
+
 Editor.setupNumberColum = setupNumberColum
 
 oldOnBridgeCmd = Editor.onBridgeCmd
+
+
 def onBridgeCmd(self, cmd):
     if cmd.startswith("toggleFroze"):
         fieldNumber = cmd.split(":", 1)[1]
@@ -86,9 +102,13 @@ def onBridgeCmd(self, cmd):
         self.loadNote()
     else:
         return oldOnBridgeCmd(self, cmd)
+
+
 Editor.onBridgeCmd = onBridgeCmd
 
 oldSetNote = Editor.setNote
+
+
 def setNote(self, note, hide=True, focusTo=None):
     if note:
         self.model = note.model()
@@ -100,138 +120,158 @@ def setNote(self, note, hide=True, focusTo=None):
     self.modelChanged = False
     if self.note:
         self.ccSpin.setValue(self.model.get("number of columns", 1))
+
+
 Editor.setNote = setNote
 
-def loadNote(self, focusTo=None):
-        """Todo
 
-        focusTo -- Whether focus should be set to some field."""
+def loadNote(self, focusTo=None):
+    """Todo
+
+    focusTo -- Whether focus should be set to some field."""
+    if not self.note:
+        return
+
+    # Triple, for each fields, with (field name, field
+    # content modified so that it's image's url can be
+    # used locally, and whether it is on its own line)
+    data = []
+    for ord, (fld, val) in enumerate(self.note.items()):
+        fldContent = self.mw.col.media.escapeImages(val)
+        fldContentTexProcessed = self.mw.col.media.escapeImages(
+            mungeQA(val, None, None, self.note.model(), None, self.note.col))
+        field = self.model["flds"][ord]
+        lineAlone = field.get("Line alone", False)
+        sticky = field.get("sticky", False)
+        data.append((fld,
+                     fldContent,
+                     fldContentTexProcessed,
+                     lineAlone,
+                     sticky))
+    self.widget.show()
+    self.updateTags()
+
+    def oncallback(arg):
         if not self.note:
             return
+        self.setupForegroundButton()
+        self.checkValid()
+        if focusTo is not None:
+            self.web.setFocus()
+        runHook("loadNote", self)
 
-        # Triple, for each fields, with (field name, field
-        # content modified so that it's image's url can be
-        # used locally, and whether it is on its own line)
-        data = []
-        for ord, (fld, val) in enumerate(self.note.items()):
-            fldContent = self.mw.col.media.escapeImages(val)
-            fldContentTexProcessed = self.mw.col.media.escapeImages(mungeQA(val, None, None, self.note.model(), None, self.note.col))
-            field = self.model["flds"][ord]
-            lineAlone = field.get("Line alone", False)
-            sticky = field.get("sticky", False)
-            data.append((fld,
-                         fldContent,
-                         fldContentTexProcessed,
-                         lineAlone,
-                         sticky))
-        self.widget.show()
-        self.updateTags()
+    self.web.evalWithCallback("setFieldsMC(%s, %d, '%s', '%s'); setFonts(%s); focusField(%s); setNoteId(%s)" % (
+        json.dumps(data),
+        self.model.get("number of columns", 1),
+        self.resourceToData(icon_path_frozen),
+        self.resourceToData(icon_path_unfrozen),
+        json.dumps(self.fonts()),
+        json.dumps(focusTo),
+        json.dumps(self.note.id)),
+        oncallback)
 
-        def oncallback(arg):
-            if not self.note:
-                return
-            self.setupForegroundButton()
-            self.checkValid()
-            if focusTo is not None:
-                self.web.setFocus()
-            runHook("loadNote", self)
 
-        self.web.evalWithCallback("setFieldsMC(%s, %d, '%s', '%s'); setFonts(%s); focusField(%s); setNoteId(%s)" % (
-            json.dumps(data),
-            self.model.get("number of columns", 1),
-            self.resourceToData(icon_path_frozen),
-            self.resourceToData(icon_path_unfrozen),
-            json.dumps(self.fonts()),
-            json.dumps(focusTo),
-            json.dumps(self.note.id)),
-                                  oncallback)
 Editor.loadNote = loadNote
 
 
 def onColumnCountChanged(self, count):
-        "Save column count to settings and re-draw with new count."
-        self.model["number of columns"] = count
-        self.modelChanged = True
-        self.loadNote()
+    "Save column count to settings and re-draw with new count."
+    self.model["number of columns"] = count
+    self.modelChanged = True
+    self.loadNote()
+
+
 Editor.onColumnCountChanged = onColumnCountChanged
 
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
-js_file = os.path.join(__location__,"js.js")
-user_files = os.path.join(__location__,"user_files")
-css_file = os.path.join(user_files,"css.css")
-icon_path = os.path.join(__location__,"icons")
+js_file = os.path.join(__location__, "js.js")
+user_files = os.path.join(__location__, "user_files")
+css_file = os.path.join(user_files, "css.css")
+icon_path = os.path.join(__location__, "icons")
 icon_path_frozen = os.path.join(icon_path, "frozen.png")
 icon_path_unfrozen = os.path.join(icon_path, "unfrozen.png")
-with open(js_file,"r") as f:
-    js= f.read()
-with open(css_file,"r") as f:
-    css= f.read()
+with open(js_file, "r") as f:
+    js = f.read()
+with open(css_file, "r") as f:
+    css = f.read()
 
 js = f"""<script>{js}</script>"""
 css = f"""<style>{css}</style>"""
 
 
 def setupWeb(self):
-        self.web = EditorWebView(self.widget, self)
-        self.web.title = "editor"
-        self.web.allowDrops = True
-        self.web.onBridgeCmd = self.onBridgeCmd
-        self.outerLayout.addWidget(self.web, 1)
+    self.web = EditorWebView(self.widget, self)
+    self.web.title = "editor"
+    self.web.allowDrops = True
+    self.web.onBridgeCmd = self.onBridgeCmd
+    self.outerLayout.addWidget(self.web, 1)
 
-        # List of buttons on top right of editor
-        righttopbtns = list()
-        righttopbtns.append(self._addButton('text_bold', 'bold', _("Bold text (Ctrl+B)"), id='bold'))
-        righttopbtns.append(self._addButton('text_italic', 'italic', _("Italic text (Ctrl+I)"), id='italic'))
-        righttopbtns.append(self._addButton('text_under', 'underline', _("Underline text (Ctrl+U)"), id='underline'))
-        righttopbtns.append(self._addButton('text_super', 'super', _("Superscript (Ctrl++)"), id='superscript'))
-        righttopbtns.append(self._addButton('text_sub', 'sub', _("Subscript (Ctrl+=)"), id='subscript'))
-        righttopbtns.append(self._addButton('text_clear', 'clear', _("Remove formatting (Ctrl+R)")))
-        # The color selection buttons do not use an icon so the HTML must be specified manually
-        tip = _("Set foreground colour (F7)")
-        righttopbtns.append('''<button tabindex=-1 class=linkb title="{}"
+    # List of buttons on top right of editor
+    righttopbtns = list()
+    righttopbtns.append(self._addButton('text_bold', 'bold',
+                                        _("Bold text (Ctrl+B)"), id='bold'))
+    righttopbtns.append(self._addButton(
+        'text_italic', 'italic', _("Italic text (Ctrl+I)"), id='italic'))
+    righttopbtns.append(self._addButton('text_under', 'underline', _(
+        "Underline text (Ctrl+U)"), id='underline'))
+    righttopbtns.append(self._addButton('text_super', 'super', _(
+        "Superscript (Ctrl++)"), id='superscript'))
+    righttopbtns.append(self._addButton('text_sub', 'sub',
+                                        _("Subscript (Ctrl+=)"), id='subscript'))
+    righttopbtns.append(self._addButton(
+        'text_clear', 'clear', _("Remove formatting (Ctrl+R)")))
+    # The color selection buttons do not use an icon so the HTML must be specified manually
+    tip = _("Set foreground colour (F7)")
+    righttopbtns.append('''<button tabindex=-1 class=linkb title="{}"
             type="button" onclick="pycmd('colour');return false;">
             <div id=forecolor style="display:inline-block; background: #000;border-radius: 5px;"
             class=topbut></div></button>'''.format(tip))
-        tip = _("Change colour (F8)")
-        righttopbtns.append('''<button tabindex=-1 class=linkb title="{}"
+    tip = _("Change colour (F8)")
+    righttopbtns.append('''<button tabindex=-1 class=linkb title="{}"
             type="button" onclick="pycmd('changeCol');return false;">
             <div style="display:inline-block; border-radius: 5px;"
             class="topbut rainbow"></div></button>'''.format(tip))
-        righttopbtns.append(self._addButton('text_cloze', 'cloze', _("Cloze deletion (Ctrl+Shift+C)")))
-        righttopbtns.append(self._addButton('paperclip', 'attach', _("Attach pictures/audio/video (F3)")))
-        righttopbtns.append(self._addButton('media-record', 'record', _("Record audio (F5)")))
-        righttopbtns.append(self._addButton('more', 'more'))
-        righttopbtns = runFilter("setupEditorButtons", righttopbtns, self)
+    righttopbtns.append(self._addButton(
+        'text_cloze', 'cloze', _("Cloze deletion (Ctrl+Shift+C)")))
+    righttopbtns.append(self._addButton(
+        'paperclip', 'attach', _("Attach pictures/audio/video (F3)")))
+    righttopbtns.append(self._addButton(
+        'media-record', 'record', _("Record audio (F5)")))
+    righttopbtns.append(self._addButton('more', 'more'))
+    righttopbtns = runFilter("setupEditorButtons", righttopbtns, self)
 
-        # Fields... and Cards... button on top lefts, and
-        lefttopbtns = """
+    # Fields... and Cards... button on top lefts, and
+    lefttopbtns = """
                 <button title='%(fldsTitle)s' onclick="pycmd('fields')">%(flds)s...</button>
                 <button title='%(cardsTitle)s' onclick="pycmd('cards')">%(cards)s...</button>
-        """%dict(flds=_("Fields"), cards=_("Cards"),
+        """ % dict(flds=_("Fields"), cards=_("Cards"),
                    fldsTitle=_("Customize Fields"),
                    cardsTitle=shortcut(_("Customize Card Templates (Ctrl+L)")))
-        topbuts= """
+    topbuts = """
             <div id="topbutsleft" style="float:left;">
                 %(lefttopbtns)s
             </div>
             <div id="topbutsright" style="float:right;">
                 %(rightbts)s
             </div>
-        """ % dict(lefttopbtns = lefttopbtns, rightbts="".join(righttopbtns))
-        bgcol = self.mw.app.palette().window().color().name()
-        # then load page
-        html = _html % (
-            bgcol, bgcol,
-            topbuts,
-            _("Show Duplicates"))
-        self.web.stdHtml(html,
-                         css=["editor.css"],
-                         # only difference, css and js file
-                         js=["jquery.js", "editor.js"],
-                         head=js+css)
+        """ % dict(lefttopbtns=lefttopbtns, rightbts="".join(righttopbtns))
+    bgcol = self.mw.app.palette().window().color().name()
+    # then load page
+    html = _html % (
+        bgcol, bgcol,
+        topbuts,
+        _("Show Duplicates"))
+    self.web.stdHtml(html,
+                     css=["editor.css"],
+                     # only difference, css and js file
+                     js=["jquery.js", "editor.js"],
+                     head=js+css)
+
+
 Editor.setupWeb = setupWeb
 oldBridgeCmd = Editor.onBridgeCmd
+
 
 def onBridgeCmd(self, cmd):
     r = oldBridgeCmd(self, cmd)
@@ -239,8 +279,10 @@ def onBridgeCmd(self, cmd):
         (type, ord, txt) = cmd.split(":", 2)
         val = self.note.fields[int(ord)]
         fldContent = self.mw.col.media.escapeImages(val)
-        fldContentTexProcessed = self.mw.col.media.escapeImages(mungeQA(val, None, None, self.note.model(), None, self.note.col))
+        fldContentTexProcessed = self.mw.col.media.escapeImages(
+            mungeQA(val, None, None, self.note.model(), None, self.note.col))
         self.web.eval(f"setField({ord}, {json.dumps(fldContent)}, {json.dumps(fldContentTexProcessed)});")
     return r
+
 
 Editor.onBridgeCmd = onBridgeCmd
